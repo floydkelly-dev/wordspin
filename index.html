@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Spin by GAMEDEV.EXPERT</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lobster+Two:ital,wght@1,700&family=Orbitron:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- Three.js Library -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      // gtag('config', 'GA_MEASUREMENT_ID'); 
+    </script>
+
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #111827;
+            color: #e2e8f0;
+            overflow: hidden;
+        }
+        .game-title {
+            font-family: 'Lobster Two', cursive;
+            font-weight: 700;
+            font-style: italic;
+            color: #4c1d95; /* Deep purple */
+            text-shadow: 
+                -2px -2px 0 #facc15, 2px -2px 0 #facc15, -2px 2px 0 #facc15, 2px 2px 0 #facc15,
+                -3px -3px 0 #ca8a04, 3px -3px 0 #ca8a04, -3px 3px 0 #ca8a04, 3px 3px 0 #ca8a04,
+                -3px -3px 10px rgba(0,0,0,0.5);
+        }
+        .inset-panel {
+            background-color: rgba(17, 24, 39, 0.8);
+            border: 1px solid rgba(55, 65, 81, 0.5);
+            border-radius: 1rem;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+            padding: 0.5rem;
+        }
+        #viewportCanvas, #gridCanvas { 
+            width: 100%;
+            height: 100%;
+            border-radius: 0.75rem;
+        }
+        #viewportCanvas { cursor: grab; }
+        #viewportCanvas:active { cursor: grabbing; }
+        #gridCanvas {
+            background: radial-gradient(circle, #172554 0%, #1e293b 100%);
+            cursor: grab;
+            position: relative;
+        }
+        #gridCanvas:active { cursor: grabbing; }
+        
+        .orb-btn {
+            position: relative; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 20px; cursor: pointer; transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3), inset 0 -2px 5px rgba(0,0,0,0.5), inset 0 2px 5px rgba(255,255,255,0.2);
+        }
+        .orb-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4), inset 0 -2px 5px rgba(0,0,0,0.5), inset 0 2px 5px rgba(255,255,255,0.2);
+        }
+        #setup-button { background: radial-gradient(circle at 30% 30%, #60a5fa, #2563eb); }
+        #help-button { background: radial-gradient(circle at 30% 30%, #fde047, #facc15); }
+        
+        .stats-label { font-family: 'Roboto', sans-serif; font-size: 0.9rem; font-weight: 300; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em;}
+        .stats-value { font-family: 'Roboto', sans-serif; font-size: 1.5rem; font-weight: 700; color: #e5e7eb; text-shadow: 0 0 5px #0ea5e9; }
+
+        .modal { transition: opacity 0.3s ease; }
+        .modal-content {
+            position: relative; background: rgba(31, 41, 55, 0.6); backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transform: scale(0.95); transition: transform 0.3s ease; overflow: hidden;
+        }
+        .modal:not(.hidden) .modal-content { transform: scale(1); }
+        .modal-content::after {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: linear-gradient(to bottom right, rgba(255,255,255,0), rgba(255,255,255,0) 40%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 60%);
+            transform: rotate(20deg); animation: shimmer 4s infinite linear;
+        }
+        @keyframes shimmer { 0% { transform: translateX(-100%) rotate(20deg); } 100% { transform: translateX(100%) rotate(20deg); } }
+        
+        .pill-btn {
+            background: linear-gradient(to bottom, #4b5563, #374151); border: 1px solid #6b7280; border-radius: 9999px;
+            transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.2), inset 0 1px 1px rgba(255,255,255,0.1);
+        }
+        .pill-btn:hover {
+            transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.1);
+            border-color: #9ca3af;
+        }
+        
+        .theme-carousel { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; }
+        .theme-card {
+            flex-shrink: 0; width: 120px; background-color: rgba(17, 24, 39, 0.7); border: 1px solid #4b5563;
+            border-radius: 0.75rem; padding: 0.75rem; text-align: center; cursor: pointer; transition: all 0.2s ease-in-out;
+        }
+        .theme-card:hover { border-color: #0ea5e9; transform: scale(1.05); }
+        .theme-card.disabled { cursor: not-allowed; opacity: 0.5; }
+        .theme-card.owned { border-color: #facc15; }
+
+    </style>
+</head>
+<body class="flex flex-col h-screen p-2 md:p-4 gap-2">
+
+    <!-- Header -->
+    <header class="flex-shrink-0 flex justify-between items-center px-4">
+        <h1 class="game-title text-5xl">WORD SPIN</h1>
+        <div class="flex items-center gap-8 text-right">
+            <div class="w-24"><div class="stats-label">Level</div><div id="level-display" class="stats-value">1</div></div>
+            <div class="w-48"><div class="stats-label">Coins</div><div id="score-display" class="stats-value">0 🪙</div></div>
+            <div class="w-24"><div class="stats-label">Time</div><div id="timer-display" class="stats-value">10:00</div></div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow flex flex-col md:flex-row items-stretch justify-center gap-1 overflow-hidden">
+        <div id="grid-container" class="inset-panel w-full md:w-1/2 relative">
+            <canvas id="gridCanvas"></canvas>
+        </div>
+        <div class="w-full md:w-1/2 flex flex-col gap-1">
+            <div id="viewport-container" class="inset-panel flex-grow"><canvas id="viewportCanvas"></canvas></div>
+            <div id="rpm-container" class="flex-shrink-0 text-center text-xs text-gray-400 h-4">
+                Spin Rate: <span id="rpm-display" class="font-bold text-cyan-400">0.0 RPM</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="flex-shrink-0 flex justify-end items-center gap-4 px-4 h-14">
+        <button id="setup-button" class="orb-btn">⚙️</button>
+        <button id="help-button" class="orb-btn">❓</button>
+    </footer>
+
+    <!-- Modals -->
+    <div id="game-over-modal" class="hidden modal absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="modal-content p-8 text-center w-full max-w-md">
+            <h2 class="text-5xl font-bold text-red-400 game-title mb-4" style="color: #dc2626; text-shadow: -2px -2px 0 #f87171, 2px 2px 0 #b91c1c;">Game Over</h2>
+            <div class="text-left bg-gray-900/50 p-4 rounded-lg mb-6">
+                <h3 class="text-xl font-bold text-cyan-400 mb-2">Final Stats</h3>
+                <div class="flex justify-between"><span class="font-semibold">Final Coins:</span> <span id="final-score" class="font-bold text-green-400">0</span></div>
+                <div class="flex justify-between"><span class="font-semibold">Level Reached:</span> <span id="final-level" class="font-bold text-yellow-400">1</span></div>
+            </div>
+            <button id="close-gameover-button" class="pill-btn text-white font-bold py-3 px-8 text-xl">Play Again</button>
+        </div>
+    </div>
+    
+    <div id="setup-modal" class="hidden modal absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="modal-content p-8 text-center w-full max-w-lg">
+            <h2 class="text-5xl font-bold text-sky-400 game-title mb-4" style="color: #38bdf8; text-shadow: -2px -2px 0 #7dd3fc, 2px 2px 0 #0369a1;">Setup</h2>
+            <div class="text-left bg-gray-900/50 p-4 rounded-lg mb-6">
+                <div class="flex justify-between items-center">
+                    <span class="font-semibold">Total Coins:</span>
+                    <span id="total-coins" class="font-bold text-lg text-yellow-400">0 🪙</span>
+                </div>
+                 <div class="flex justify-between items-center mt-2">
+                    <span class="font-semibold">Highest Score:</span>
+                    <span id="highest-score" class="font-bold text-lg text-green-400">0</span>
+                </div>
+                <div class="flex justify-between items-center mt-2">
+                    <span class="font-semibold">Show Wireframe:</span>
+                    <input type="checkbox" id="wireframe-toggle" class="form-checkbox h-5 w-5 text-blue-600">
+                </div>
+                <div class="flex justify-between items-center mt-2">
+                    <span class="font-semibold">Enable Tilt Effect:</span>
+                    <input type="checkbox" id="tilt-toggle" class="form-checkbox h-5 w-5 text-blue-600">
+                </div>
+            </div>
+            <h3 class="text-2xl font-bold text-cyan-400 mb-2">Theme Store</h3>
+            <div id="theme-carousel" class="theme-carousel"></div>
+            <button id="close-setup-button" class="orb-btn mx-auto mt-6">❌</button>
+        </div>
+    </div>
+    
+    <div id="help-modal" class="hidden modal absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="modal-content p-8 text-center w-full max-w-md">
+            <h2 class="text-5xl font-bold text-sky-300 game-title mb-4">Help</h2>
+            <p class="text-lg mb-6 text-left">Drag and drop the letter tiles to solve the words in each row. Complete words to earn points! Spin the icosphere for fun!</p>
+            <button id="close-help-button" class="orb-btn mx-auto">❌</button>
+        </div>
+    </div>
+
+
+    <!-- Main Game Logic -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        // === DOM Element References ===
+        const gridCanvas = document.getElementById('gridCanvas');
+        const gridCtx = gridCanvas.getContext('2d');
+        const viewportCanvas = document.getElementById('viewportCanvas');
+        const scoreDisplay = document.getElementById('score-display');
+        const levelDisplay = document.getElementById('level-display');
+        const timerDisplay = document.getElementById('timer-display');
+        const rpmDisplay = document.getElementById('rpm-display');
+        
+        const gameOverModal = document.getElementById('game-over-modal');
+        const setupModal = document.getElementById('setup-modal');
+        const helpModal = document.getElementById('help-modal');
+        
+        const closeGameOverButton = document.getElementById('close-gameover-button');
+        const setupButton = document.getElementById('setup-button');
+        const closeSetupButton = document.getElementById('close-setup-button');
+        const helpButton = document.getElementById('help-button');
+        const closeHelpButton = document.getElementById('close-help-button');
+
+        const finalScoreDisplay = document.getElementById('final-score');
+        const finalLevelDisplay = document.getElementById('final-level');
+        const themeCarousel = document.getElementById('theme-carousel');
+        const wireframeToggle = document.getElementById('wireframe-toggle');
+        const tiltToggle = document.getElementById('tilt-toggle');
+        const totalCoinsDisplay = document.getElementById('total-coins');
+
+        // === Game Constants ===
+        const GRID_SIZE = 9;
+        const BORDER_COLOR = 'rgba(255, 255, 255, 0.2)';
+        const INITIAL_TIME = 600;
+        let DEFAULT_SPIN_SPEED = -(2 * Math.PI) / 15;
+        const BOMB_EMOJIS = ["🟢", "🔴", "🔵", "🟡"];
+        const BOMB_COLORS = { "🟢": 0x166534, "🔴": 0x991b1b, "🔵": 0x1e40af, "🟡": 0x854d0e };
+        
+        const WORD_BANK_5 = ["AMBER","ANGEL","APPLE","AQUAS","ARISE","BALMS","BANDS","BASIL","BEATS","BERRY","BLEND","BLOSS","BLUES","BONGO","BOOST","BRAIN","BRASS","BRAVE","BREEZ","BRUSH","CARES","CLEAN","CLEAR","CLOVE","CLOUD","COAST","COLOR","CREST","CRISP","CURES","CYCLE","DAFFY","DAILY","DANCE","DAWN","DEWED","DREAM","EARTH","EASES","EAGER","ELATE","ELDER","ELFIN","ELITE","ENJOY","ETHER","FAITH","FEAST","FIBER","FIELD","FLAIR","FLAME","FLORA","FLUTE","FOCUS","FRESH","FROST","FUNGI","GAILY","GAMES","GIFTY","GLEAM","GLOWY","GRACE","GREEN","GRINS","GROVE","HAPPY","HARPS","HEALS","HEART","HERBS","HONEY","HUMAN","HYDRO","IDEAL","ILLUM","IVORY","JAZZY","JOLLY","JOYED","JUICE","LACEY","LIGHT","LILAC","LIMES","LINEN","LIVID","LOGIC","LOVED","LUCKY","LYRIC","MAGIC","MAJOR","MANGO","MARCH","MELLOW","MERCY","MINOR","MINTY","MIRTH","MUSIC","NEONS","NOBLE","NOTED","OASIS","OLIVE","OPERA","OPTIC","ORBIT","ORGAN","OVERT","PAINT","PASTE","PEACH","PEARL","PEPPY","PIANO","PINKS","PLANT","PLUSH","POISE","POWER","PRIME","PUREE","QUIET","QUILL","QUILT","QUOTA","RAINED","REGAL","REHAB","RELAX","RENEW","RESIN","SAFER","SALSA","SALVE","SAVOR","SCENT","SCOPE","SERUM","SHINE","SILKY","SKIES","SMILE","SOLID","SONGS","SORRY","SOULS","SPARK","SPICE","STARS","STRUM","STYLE","SUNNY","SUPER","SWELL","SWIFT","URBAN","UNITY","VALOR","VIBES","VOCAL","VOICE","VOLTS","WAVES","WEAVE","WHIST","WHITE","WHOLE","WISER","WORLD","WORTH","YODEL","ZESTY"];
+        const WORD_BANK_7 = ["RADIANT","RAYSUN","REFINE","REFLEX","REFORM","RHYTHM","RISING","ROBUST","SYNERGY","TACTIC","TENDER","THRIVE","TIDIER","TIDYUP","TONICS","TUNING","TUNNEL","TUNERS","UPLIFT","VIOLET","VISION","VIRTUE","WILLOW","WINDY","BALANCE","BLOSSOM","BREEZE","CALMEST","CANDLE","CAROUSE","CHORALS","CHROMES","CLARITY","COMFORT","CONCORD","CONCERT","COURAGE","CRAYONS","CREATOR","CRYSTAL","DANCERS","DAYSTAR","DELIGHT","DESIRED","DISCUSS","ECLIPSE","EMERALD","EMOTIVE","ENERGIC","ENLIGHT","EVENING","FANTASY","FASHION","FEATHER","FEELING","FESTIVE","FIBROUS","FINEART","FLORALS","FLUENCY","FOCUSED","FONDANT","FORGIVE","FRIENDS","FROSTED","GALAXES","GARDENS","GLASSES","GLITTER","GOURMET","GRACERS","GRANTED","HARMONY","HEALING","HELPFUL","HORIZON","HUGGING","ILLUMED","INSPIRE","JASMINE","JEWELRY","JOURNEY","JUSTICE","KEEPERS","KINDLED","LANTERN","LEADING","LEAFLET","LEMONED","LIFTING","LILTING","LISTENS","LOFTIER","LUNARLY","MELODIC","MENTORS","MIRACLE","MOTIONS","NATURAL","NATURES","NEBULAE","NEUTRAL","NOTABLE","OCEANIC","OFFBEAT","OPTIMAL","ORANGES","ORBITAL","OUTCOME","OVATION","OVERJOY","PALLATE","PASSION","PATIENT","PERFUME","PHONICS","PHRASAL","PHYSICS","PILLARS","PINKISH","PLATTER","POETICS","POLITIC","PRAISED","PURITYS","RADIATE","RAINBOW","REFRESH","REFLECT","RELIEVE","RESOLVE","REVIVAL","RHYTHMS","ROMANCE","ROUNDED","SALIENT","SAPPHIC","SCENERY","SCIENCE","SERENES","SHAPELY","SHARING","SHIMMER","SINGERS","SKYLARK","SOARING","SOOTHED","SOPRANO","SPACIAL","SPHERES","SPRINGS","STARLIT","SUPPORT","TENDERS","TERRACE","TEXTURE","THRIVES","TONIGHT","TUNABLE","TUNEFUL","UPRIVER","UPRIGHT","VIBRANT","VIOLINS","VIRTUES","VISIONY","VIVIDLY","VOYAGER","WELFARE","WHISTLE","WILLING","WINDING","WONDERS","ZENITHS","ZINNIAS"];
+
+        // === Game State ===
+        let board = [];
+        let cellSize = 0;
+        let gridOffsetX = 0, gridOffsetY = 0;
+        let score = 0, level = 1, timeLeft = INITIAL_TIME;
+        let gameIsOver = false;
+        let words = [];
+        let draggedTile = null;
+        let flyingCoins = [];
+        let isLevelingUp = false;
+        let levelUpAnimation = { progress: 0, active: false };
+        let lastInteractionTime = Date.now();
+        let penaltyIntervalId = null;
+        let bombPulseState = { index: 0, timer: 0, active: false, duration: 1 };
+        
+        // === Player & Theme State ===
+        let totalCoins = 50000000; // Start with some coins for testing
+        let highestScore = 0;
+        let themes = [
+            { name: 'Icosphere', shape: 'icosphere', cost: 24000000, owned: true },
+            { name: 'Torus', shape: 'torus', cost: 48000000, owned: false },
+            { name: '5-Point Star', shape: 'star5', cost: 96000000, owned: false },
+            { name: '8-Point Star', shape: 'star8', cost: 192000000, owned: false },
+            { name: 'Nested Cube', shape: 'nestedCube', cost: 384000000, owned: false },
+        ];
+        let currentShape = 'icosphere';
+
+        // === Three.js State ===
+        let scene, camera, renderer, mainShape, halos, composer, bloomPass;
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let rotationVelocity = { x: 0, y: DEFAULT_SPIN_SPEED, z: 0 };
+        const dragFactor = 0.005;
+        const inertiaFactor = 0.992;
+        let haloTexture;
+
+        // ===================================================================================
+        //  GAME INITIALIZATION
+        // ===================================================================================
+        
+        function createHaloTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+            gradient.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient.addColorStop(0.2, 'rgba(255,255,255,0.8)');
+            gradient.addColorStop(0.4, 'rgba(255,255,255,0.2)');
+            gradient.addColorStop(1, 'rgba(255,255,255,0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 256, 256);
+
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 1;
+            for(let i=0; i<32; i++){
+                ctx.beginPath();
+                ctx.moveTo(128, 128);
+                const angle = (i / 32) * Math.PI * 2;
+                const length = Math.random() * 120 + 80;
+                ctx.lineTo(128 + Math.cos(angle) * length, 128 + Math.sin(angle) * length);
+                ctx.stroke();
+            }
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function init() {
+            haloTexture = createHaloTexture();
+            init3D();
+            resizeCanvases();
+            setupEventListeners();
+            startNewGame();
+            gameLoop();
+        }
+
+        function setupEventListeners() {
+            window.addEventListener('resize', resizeCanvases);
+            
+            closeGameOverButton.addEventListener('click', () => { gameOverModal.classList.add('hidden'); startNewGame(); });
+            setupButton.addEventListener('click', openSetupModal);
+            closeSetupButton.addEventListener('click', () => setupModal.classList.add('hidden'));
+            helpButton.addEventListener('click', () => helpModal.classList.remove('hidden'));
+            closeHelpButton.addEventListener('click', () => helpModal.classList.add('hidden'));
+            wireframeToggle.addEventListener('change', (e) => {
+                if(mainShape) {
+                    const wireframe = mainShape.children.find(c => c.type === 'LineSegments');
+                    if (wireframe) wireframe.visible = e.target.checked;
+                }
+            });
+
+            viewportCanvas.addEventListener('mousedown', on3DMouseDown);
+            viewportCanvas.addEventListener('mousemove', on3DMouseMove);
+            viewportCanvas.addEventListener('mouseup', on3DMouseUp);
+            viewportCanvas.addEventListener('mouseleave', on3DMouseUp);
+
+            gridCanvas.addEventListener('mousedown', onGridMouseDown);
+            gridCanvas.addEventListener('mousemove', onGridMouseMove);
+            gridCanvas.addEventListener('mouseup', onGridMouseUp);
+        }
+
+        function startNewGame() {
+            score = 0;
+            level = 1;
+            timeLeft = INITIAL_TIME;
+            gameIsOver = false;
+            flyingCoins = [];
+            DEFAULT_SPIN_SPEED = -(2 * Math.PI) / 15;
+            rotationVelocity = { x: 0, y: DEFAULT_SPIN_SPEED, z: 0 };
+            if (halos) scene.remove(halos);
+            updateUI();
+            createBoard(level - 1);
+            resetInactivity();
+        }
+        
+        function startNewLevel() {
+            level++;
+            DEFAULT_SPIN_SPEED *= 1.50;
+            score += 5000000;
+            updateUI();
+            createBoard(level - 1);
+            isLevelingUp = false;
+            levelUpAnimation.active = false;
+        }
+
+        // ===================================================================================
+        //  3D VIEWPORT & THEME STORE
+        // ===================================================================================
+        function init3D() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ canvas: viewportCanvas, antialias: true, alpha: true });
+            renderer.setClearColor(0x000000, 0);
+            camera.position.z = 7;
+            
+            const renderScene = new RenderPass(scene, camera);
+            bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+            bloomPass.threshold = 0;
+            bloomPass.strength = 0;
+            bloomPass.radius = 0;
+            composer = new EffectComposer(renderer);
+            composer.addPass(renderScene);
+            composer.addPass(bloomPass);
+
+            set3DShape(currentShape);
+        }
+        
+        function set3DShape(shapeName) {
+            if (mainShape) scene.remove(mainShape);
+            if (halos) scene.remove(halos);
+            
+            let geometry;
+            switch(shapeName) {
+                case 'torus': geometry = new THREE.TorusGeometry(3, 1, 16, 16); break;
+                case 'star5': geometry = createStarGeometry(5, 1.5, 3.5); break;
+                case 'star8': geometry = createStarGeometry(8, 2, 3.5); break;
+                case 'nestedCube': mainShape = createNestedCubes(); scene.add(mainShape); currentShape = shapeName; return;
+                case 'icosphere': default: geometry = new THREE.IcosahedronGeometry(3.5, 1); break;
+            }
+
+            const solidMaterial = new THREE.MeshBasicMaterial({ color: 0x1e3a8a, transparent: true, opacity: 0.0 });
+            const solidMesh = new THREE.Mesh(geometry, solidMaterial);
+            
+            const wireframe = new THREE.WireframeGeometry(geometry);
+            const material = new THREE.LineBasicMaterial({ color: 0x0ea5e9, transparent: true, opacity: 0.33 });
+            const wireframeMesh = new THREE.LineSegments(wireframe, material);
+            wireframeMesh.visible = wireframeToggle.checked;
+
+            mainShape = new THREE.Group();
+            mainShape.add(solidMesh);
+            mainShape.add(wireframeMesh);
+            
+            scene.add(mainShape);
+            currentShape = shapeName;
+        }
+
+        function createStarGeometry(points, innerRadius, outerRadius) {
+            const shape = new THREE.Shape();
+            const angle = (Math.PI * 2) / (points * 2);
+            for (let i = 0; i < points * 2; i++) {
+                const r = (i % 2 === 0) ? outerRadius : innerRadius;
+                const x = Math.cos(i * angle) * r;
+                const y = Math.sin(i * angle) * r;
+                if (i === 0) shape.moveTo(x, y);
+                else shape.lineTo(x, y);
+            }
+            shape.closePath();
+            const extrudeSettings = { depth: 0.5, bevelEnabled: false };
+            return new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        }
+
+        function createNestedCubes() {
+            const group = new THREE.Group();
+            const outerGeom = new THREE.WireframeGeometry(new THREE.BoxGeometry(4, 4, 4));
+            const outerMat = new THREE.LineBasicMaterial({ color: 0x0ea5e9, transparent: true, opacity: 0.33 });
+            const outerCube = new THREE.LineSegments(outerGeom, outerMat);
+            
+            const innerGeom = new THREE.WireframeGeometry(new THREE.BoxGeometry(2, 2, 2));
+            const innerMat = new THREE.LineBasicMaterial({ color: 0xfacc15, transparent: true, opacity: 0.33 });
+            const innerCube = new THREE.LineSegments(innerGeom, innerMat);
+            
+            group.add(outerCube);
+            group.add(innerCube);
+            
+            group.userData.animate = (time) => {
+                outerCube.rotation.x += 0.001;
+                outerCube.rotation.y += 0.001;
+                innerCube.rotation.x -= 0.002;
+                innerCube.rotation.y -= 0.002;
+            };
+            return group;
+        }
+
+        function on3DMouseDown(e) { isDragging = true; previousMousePosition = { x: e.clientX, y: e.clientY }; }
+        function on3DMouseUp() { isDragging = false; }
+        function on3DMouseMove(e) {
+            if (!isDragging) return;
+            const deltaMove = { x: e.clientX - previousMousePosition.x };
+            rotationVelocity.y += deltaMove.x * dragFactor;
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        }
+        function animate3D(deltaTime, time) {
+            if (!isDragging) {
+                rotationVelocity.y = (rotationVelocity.y * inertiaFactor) + (DEFAULT_SPIN_SPEED * (1.0 - inertiaFactor));
+            }
+            
+            if (mainShape.userData.animate) {
+                mainShape.userData.animate(time);
+            }
+            mainShape.rotation.y += rotationVelocity.y * deltaTime;
+
+            if (tiltToggle.checked) {
+                mainShape.rotation.x = Math.sin(time * 0.001) * 0.08; // ~4.5 degrees tilt
+            } else {
+                mainShape.rotation.x = 0;
+            }
+
+            if (halos) {
+                halos.children.forEach(halo => {
+                    const scale = 1.0 + Math.sin(time * halo.userData.speed) * halo.userData.fluctuation;
+                    halo.scale.set(scale, scale, scale);
+                    if (halo.children[0]) {
+                        halo.children[0].intensity = 1 + Math.sin(time * halo.userData.speed);
+                    }
+                    if (halo.children[1]) {
+                        halo.children[1].material.opacity = 0.5 + Math.cos(time * halo.userData.speed) * 0.5;
+                    }
+                });
+            }
+            
+            const speed = Math.abs(rotationVelocity.y);
+            const blurThreshold = Math.PI * 8;
+            if (speed > blurThreshold) {
+                bloomPass.strength = Math.min((speed - blurThreshold) / (Math.PI * 8), 1.5);
+            } else {
+                bloomPass.strength = 0;
+            }
+            
+            const rpm = Math.abs(rotationVelocity.y * 60 / (2 * Math.PI)).toFixed(1);
+            rpmDisplay.textContent = `${rpm} RPM`;
+
+            composer.render();
+        }
+
+        function openSetupModal() {
+            document.getElementById('highest-score').textContent = highestScore.toLocaleString('en-US');
+            totalCoinsDisplay.textContent = `${totalCoins.toLocaleString('en-US')} 🪙`;
+            populateThemeStore();
+            setupModal.classList.remove('hidden');
+        }
+
+        function populateThemeStore() {
+            themeCarousel.innerHTML = '';
+            themes.forEach((theme, index) => {
+                const card = document.createElement('div');
+                card.className = 'theme-card';
+                if (theme.owned) card.classList.add('owned');
+                if (!theme.owned && totalCoins < theme.cost) card.classList.add('disabled');
+                
+                card.innerHTML = `<div class="font-bold">${theme.name}</div><div class="text-sm text-yellow-400 mt-2">${theme.owned ? 'Owned' : theme.cost.toLocaleString() + ' 🪙'}</div>`;
+                
+                card.onclick = () => {
+                    if (theme.owned) {
+                        set3DShape(theme.shape);
+                    } else if (totalCoins >= theme.cost) {
+                        totalCoins -= theme.cost;
+                        theme.owned = true;
+                        if (themes[index+1]) themes[index+1].cost += 48000000;
+                        updateUI();
+                        set3DShape(theme.shape);
+                        populateThemeStore();
+                    }
+                };
+                themeCarousel.appendChild(card);
+            });
+        }
+
+        // ===================================================================================
+        //  CANVAS & UI MANAGEMENT
+        // ===================================================================================
+        function resizeCanvases() {
+            const vpRect = viewportCanvas.parentElement.getBoundingClientRect();
+            viewportCanvas.width = vpRect.width;
+            viewportCanvas.height = vpRect.height;
+            renderer.setSize(vpRect.width, vpRect.height);
+            composer.setSize(vpRect.width, vpRect.height);
+            camera.aspect = vpRect.width / vpRect.height;
+            camera.updateProjectionMatrix();
+
+            const gridRect = gridCanvas.parentElement.getBoundingClientRect();
+            gridCanvas.width = gridRect.width;
+            gridCanvas.height = gridRect.height;
+            cellSize = Math.min(gridCanvas.width, gridCanvas.height) / GRID_SIZE;
+            gridOffsetX = (gridCanvas.width - GRID_SIZE * cellSize) / 2;
+            gridOffsetY = (gridCanvas.height - GRID_SIZE * cellSize) / 2;
+        }
+        
+        function updateUI() {
+            if (score > highestScore) highestScore = score;
+            scoreDisplay.textContent = `${score.toLocaleString('en-US')}  `;
+            levelDisplay.textContent = level;
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = Math.floor(timeLeft % 60);
+            timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function showGameOver() {
+            gameIsOver = true;
+            totalCoins += score; // Add game score to persistent total
+            finalScoreDisplay.textContent = score.toLocaleString('en-US');
+            finalLevelDisplay.textContent = level;
+            gameOverModal.classList.remove('hidden');
+            resetInactivity();
+        }
+        
+        function drawRoundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // ===================================================================================
+        //  GAME BOARD LOGIC & DRAWING
+        // ===================================================================================
+        function createBoard(levelIndex) {
+            const wordSet5 = [...WORD_BANK_5];
+            const wordSet7 = [...WORD_BANK_7];
+            
+            const getWord = (length) => {
+                const bank = length === 5 ? wordSet5 : wordSet7;
+                const index = Math.floor(Math.random() * bank.length);
+                return bank.splice(index, 1)[0];
+            };
+
+            words = [
+                { text: getWord(5), row: 1, solved: false },
+                { text: getWord(7), row: 3, solved: false },
+                { text: getWord(7), row: 5, solved: false },
+                { text: getWord(5), row: 7, solved: false }
+            ];
+            board = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(null));
+            board[4][4] = { type: 'star', clickCount: 0, disabledUntil: 0 };
+
+            const corners = [[0,0], [0,8], [8,0], [8,8]];
+            corners.forEach((pos, i) => {
+                board[pos[0]][pos[1]] = { type: 'bomb', emoji: BOMB_EMOJIS[i] };
+            });
+
+            words.forEach((wordData, wordIndex) => {
+                const word = wordData.text;
+                const startX = Math.floor((GRID_SIZE - word.length) / 2);
+                let positions = Array.from({length: word.length}, (_, i) => i);
+                for(let i = positions.length - 1; i > 0; i--){
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [positions[i], positions[j]] = [positions[j], positions[i]];
+                }
+                for (let i = 0; i < word.length; i++) {
+                    const currentGridX = startX + positions[i];
+                    board[wordData.row][currentGridX] = {
+                        type: 'letter', letter: word[i], wordIndex: wordIndex,
+                        homeX: startX + i, homeY: wordData.row, isDragging: false
+                    };
+                }
+            });
+        }
+
+        function drawBoardElements(time) {
+            gridCtx.save();
+            gridCtx.translate(gridOffsetX, gridOffsetY);
+
+            gridCtx.strokeStyle = BORDER_COLOR;
+            gridCtx.lineWidth = 1;
+            for (let i = 0; i <= GRID_SIZE; i++) {
+                gridCtx.beginPath(); gridCtx.moveTo(i * cellSize, 0); gridCtx.lineTo(i * cellSize, GRID_SIZE * cellSize); gridCtx.stroke();
+                gridCtx.beginPath(); gridCtx.moveTo(0, i * cellSize); gridCtx.lineTo(GRID_SIZE * cellSize, i * cellSize); gridCtx.stroke();
+            }
+
+            if (draggedTile && draggedTile.tile.type === 'letter') {
+                gridCtx.globalAlpha = 0.4;
+                drawLetterTile(draggedTile.tile, draggedTile.originalGridX, draggedTile.originalGridY);
+                gridCtx.globalAlpha = 1.0;
+            }
+
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    const cell = board[y][x];
+                    if (!cell) {
+                        drawEmptyTile(x, y);
+                        continue;
+                    };
+                    if (cell.type === 'letter' && !cell.isDragging) {
+                        drawLetterTile(cell, x, y);
+                    } else if (cell.type === 'star') {
+                        drawStarTile(cell, x, y, time);
+                    } else if (cell.type === 'bomb') {
+                        drawBombTile(cell, x, y);
+                    }
+                }
+            }
+            if (draggedTile) {
+                if (draggedTile.tile.type === 'letter') {
+                    drawLetterTile(draggedTile.tile, 0, 0, true);
+                } else if (draggedTile.tile.type === 'bomb') {
+                    const mouseX = draggedTile.tile.pixelX - gridOffsetX;
+                    const mouseY = draggedTile.tile.pixelY - gridOffsetY;
+                    const gridX = Math.floor(mouseX / cellSize);
+                    const gridY = Math.floor(mouseY / cellSize);
+                    gridCtx.fillStyle = 'rgba(0, 255, 0, 0.2)';
+                    gridCtx.fillRect((gridX - 1) * cellSize, (gridY - 1) * cellSize, 3 * cellSize, 3 * cellSize);
+                    drawBombTile(draggedTile.tile, 0, 0, true);
+                }
+            }
+            
+            if (levelUpAnimation.active) {
+                drawLevelUpAnimation();
+            }
+            
+            gridCtx.restore();
+        }
+        
+        function drawEmptyTile(gridX, gridY) {
+            const x = gridX * cellSize;
+            const y = gridY * cellSize;
+            const padding = cellSize * 0.05;
+            const radius = cellSize * 0.2;
+            gridCtx.fillStyle = 'rgba(17, 24, 39, 0.5)';
+            drawRoundRect(gridCtx, x + padding, y + padding, cellSize - padding*2, cellSize - padding*2, radius);
+        }
+        
+        function drawStarTile(tile, gridX, gridY, time) {
+            const x = gridX * cellSize + cellSize / 2;
+            const y = gridY * cellSize + cellSize / 2;
+            const isDisabled = tile.disabledUntil > Date.now();
+            
+            // Glowing effect
+            if (!isDisabled) {
+                gridCtx.save();
+                const glowSize = Math.sin(time * 0.003) * 5 + 10;
+                gridCtx.shadowColor = '#facc15';
+                gridCtx.shadowBlur = glowSize;
+                gridCtx.font = `${cellSize * 0.7}px Roboto`;
+                gridCtx.textAlign = 'center';
+                gridCtx.textBaseline = 'middle';
+                gridCtx.fillText("🪙", x, y + cellSize * 0.05);
+                gridCtx.restore();
+            }
+            
+            gridCtx.globalAlpha = isDisabled ? 0.3 : 1.0;
+            gridCtx.font = `${cellSize * 0.7}px Roboto`;
+            gridCtx.textAlign = 'center';
+            gridCtx.textBaseline = 'middle';
+            gridCtx.fillText("🪙", x, y + cellSize * 0.05);
+            gridCtx.globalAlpha = 1.0;
+
+            if (isDisabled) {
+                const remaining = Math.ceil((tile.disabledUntil - Date.now()) / 1000);
+                gridCtx.fillStyle = 'white';
+                gridCtx.font = `bold ${cellSize * 0.4}px Roboto`;
+                gridCtx.fillText(remaining, x, y);
+            }
+        }
+
+        function drawBombTile(tile, gridX, gridY, isBeingDragged = false) {
+            const x = isBeingDragged ? tile.pixelX - gridOffsetX : gridX * cellSize + cellSize/2;
+            const y = isBeingDragged ? tile.pixelY - gridOffsetY : gridY * cellSize + cellSize/2;
+            
+            // Pulsing glow
+            if (bombPulseState.active && bombPulseState.index === BOMB_EMOJIS.indexOf(tile.emoji)) {
+                gridCtx.save();
+                const glowSize = Math.sin(bombPulseState.timer * Math.PI) * 20;
+                gridCtx.shadowColor = '#fef08a';
+                gridCtx.shadowBlur = glowSize;
+            }
+
+            gridCtx.font = `${cellSize * 0.7}px Roboto`;
+            gridCtx.textAlign = 'center';
+            gridCtx.textBaseline = 'middle';
+            gridCtx.fillText(tile.emoji, x, y);
+
+            if (bombPulseState.active && bombPulseState.index === BOMB_EMOJIS.indexOf(tile.emoji)) {
+                gridCtx.restore();
+            }
+        }
+
+        function drawLetterTile(tile, gridX, gridY, isBeingDragged = false) {
+            const wordData = words[tile.wordIndex];
+            const x = isBeingDragged ? tile.pixelX - gridOffsetX - cellSize/2 : gridX * cellSize;
+            const y = isBeingDragged ? tile.pixelY - gridOffsetY - cellSize/2 : gridY * cellSize;
+            const padding = cellSize * 0.05;
+            const radius = cellSize * 0.2;
+
+            const isSolved = wordData.solved;
+            const bgColor = isSolved ? '#166534' : '#4b5563';
+            const textColor = isSolved ? '#f0fdf4' : '#f9fafb';
+            
+            gridCtx.fillStyle = bgColor;
+            drawRoundRect(gridCtx, x + padding, y + padding, cellSize - padding*2, cellSize - padding*2, radius);
+            
+            gridCtx.fillStyle = textColor;
+            gridCtx.font = `700 ${cellSize * 0.7}px Roboto`;
+            gridCtx.textAlign = 'center';
+            gridCtx.textBaseline = 'middle';
+            gridCtx.fillText(tile.letter, x + cellSize / 2, y + cellSize / 2 + (cellSize * 0.05));
+        }
+
+        // ===================================================================================
+        //  DRAG & DROP AND GAMEPLAY LOGIC
+        // ===================================================================================
+        function onGridMouseDown(e) {
+            if (isLevelingUp) return;
+            resetInactivity();
+            const rect = gridCanvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left - gridOffsetX;
+            const mouseY = e.clientY - rect.top - gridOffsetY;
+            const gridX = Math.floor(mouseX / cellSize);
+            const gridY = Math.floor(mouseY / cellSize);
+            if (gridX < 0 || gridX >= GRID_SIZE || gridY < 0 || gridY >= GRID_SIZE) return;
+            const tile = board[gridY][gridX];
+
+            if (tile && tile.type === 'star' && tile.disabledUntil <= Date.now()) {
+                score += 50000;
+                tile.clickCount++;
+                if (tile.clickCount >= 12) {
+                    tile.disabledUntil = Date.now() + 20000;
+                    tile.clickCount = 0;
+                }
+                triggerCoinAnimation({row: 4, text: "🌟"});
+                updateUI();
+                return;
+            }
+
+            if (tile && ((tile.type === 'letter' && !words[tile.wordIndex].solved) || tile.type === 'bomb')) {
+                draggedTile = { tile, originalGridX: gridX, originalGridY: gridY };
+                tile.isDragging = true;
+                if (tile.type !== 'bomb') {
+                    board[gridY][gridX] = null;
+                }
+            }
+        }
+
+        function onGridMouseMove(e) {
+            if (!draggedTile) return;
+            const rect = gridCanvas.getBoundingClientRect();
+            draggedTile.tile.pixelX = e.clientX - rect.left;
+            draggedTile.tile.pixelY = e.clientY - rect.top;
+        }
+
+        function onGridMouseUp(e) {
+            if (!draggedTile) return;
+            const rect = gridCanvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left - gridOffsetX;
+            const mouseY = e.clientY - rect.top - gridOffsetY;
+            const gridX = Math.floor(mouseX / cellSize);
+            const gridY = Math.floor(mouseY / cellSize);
+
+            const droppedTile = draggedTile.tile;
+            const targetCell = (gridX >= 0 && gridX < GRID_SIZE && gridY >= 0 && gridY < GRID_SIZE) ? board[gridY][gridX] : null;
+
+            if (droppedTile.type === 'bomb') {
+                if (targetCell && targetCell.type === 'letter') {
+                    detonateBomb(gridX, gridY, droppedTile.emoji);
+                }
+            } 
+            else if (droppedTile.type === 'letter') {
+                const wordData = words[droppedTile.wordIndex];
+                const wordStartX = Math.floor((GRID_SIZE - wordData.text.length) / 2);
+                const wordEndX = wordStartX + wordData.text.length -1;
+
+                if (targetCell && targetCell.type === 'letter' && targetCell.wordIndex === droppedTile.wordIndex) {
+                    board[draggedTile.originalGridY][draggedTile.originalGridX] = targetCell;
+                    board[gridY][gridX] = droppedTile;
+                    checkWordSolved(targetCell.wordIndex);
+                } else if (targetCell === null && gridY === droppedTile.homeY && gridX >= wordStartX && gridX <= wordEndX) {
+                    board[gridY][gridX] = droppedTile;
+                } else {
+                    board[draggedTile.originalGridY][draggedTile.originalGridX] = droppedTile;
+                }
+            }
+            
+            droppedTile.isDragging = false;
+            draggedTile = null;
+            if (droppedTile.type === 'letter') {
+                checkWordSolved(droppedTile.wordIndex);
+            }
+        }
+        
+        function detonateBomb(centerX, centerY, bombEmoji) {
+            for (let y = centerY - 1; y <= centerY + 1; y++) {
+                for (let x = centerX - 1; x <= centerX + 1; x++) {
+                    if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) continue;
+                    const tile = board[y][x];
+                    if (tile && tile.type === 'letter' && !words[tile.wordIndex].solved) {
+                        const wordData = words[tile.wordIndex];
+                        const wordStartX = Math.floor((GRID_SIZE - wordData.text.length) / 2);
+                        const correctLetter = wordData.text[x - wordStartX];
+                        if (tile.letter !== correctLetter) {
+                            for (let searchX = wordStartX; searchX < wordStartX + wordData.text.length; searchX++) {
+                                const swapCandidate = board[y][searchX];
+                                if (swapCandidate && swapCandidate.type === 'letter' && swapCandidate.letter === correctLetter) {
+                                    board[y][searchX] = tile;
+                                    board[y][x] = swapCandidate;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            words.forEach((word, index) => checkWordSolved(index, bombEmoji));
+        }
+
+        function checkWordSolved(wordIndex, bombEmoji = null) {
+            const wordData = words[wordIndex];
+            if (wordData.solved) return;
+            const startX = Math.floor((GRID_SIZE - wordData.text.length) / 2);
+            for (let i = 0; i < wordData.text.length; i++) {
+                const tile = board[wordData.row][startX + i];
+                if (!tile || tile.letter !== wordData.text[i]) return;
+            }
+            wordData.solved = true;
+            score += 1500000;
+            triggerCoinAnimation(wordData);
+            DEFAULT_SPIN_SPEED *= 1.10;
+            const color = bombEmoji ? BOMB_COLORS[bombEmoji] : 0xfacc15;
+            addHaloToIcosphere(color);
+            updateUI();
+            
+            if (words.every(w => w.solved)) {
+                isLevelingUp = true;
+                levelUpAnimation = { progress: 0, active: true };
+                setTimeout(startNewLevel, 4000); // Increased duration
+            }
+        }
+
+        function addHaloToIcosphere(color) {
+            if (!mainShape.children[0].geometry.attributes.position) return;
+            const vertices = mainShape.children[0].geometry.attributes.position.array;
+            const randomIndex = Math.floor(Math.random() * (vertices.length / 3)) * 3;
+            const vertex = new THREE.Vector3(vertices[randomIndex], vertices[randomIndex+1], vertices[randomIndex+2]);
+            
+            const haloGroup = new THREE.Group();
+            
+            const light = new THREE.PointLight(color, 2, 5);
+            haloGroup.add(light);
+
+            const haloGeometry = new THREE.TorusGeometry(0.4, 0.1, 8, 24);
+            const haloMaterial = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.8 });
+            const halo = new THREE.Mesh(haloGeometry, haloMaterial);
+            haloGroup.add(halo);
+
+            haloGroup.position.copy(vertex);
+            haloGroup.lookAt(new THREE.Vector3(0,0,0));
+            haloGroup.userData.speed = Math.random() * 0.005 + 0.002;
+            haloGroup.userData.fluctuation = Math.random() * 0.2 + 0.1;
+            
+            if (!mainShape.children.find(c => c.name === "halos")) {
+                halos = new THREE.Group();
+                halos.name = "halos";
+                mainShape.add(halos);
+            }
+            halos.add(haloGroup);
+        }
+
+        function triggerCoinAnimation(wordData) {
+            const wordLength = wordData.text.length;
+            const startGridX = (wordData.text === "🌟") ? 4 : Math.floor((GRID_SIZE - wordLength) / 2);
+            const p0 = {
+                x: gridOffsetX + (startGridX + (wordData.text === "🌟" ? 0.5 : wordLength / 2)) * cellSize,
+                y: gridOffsetY + (wordData.row + 0.5) * cellSize
+            };
+            const scoreRect = scoreDisplay.getBoundingClientRect();
+            const canvasRect = gridCanvas.getBoundingClientRect();
+            const p2 = {
+                x: scoreRect.left + scoreRect.width / 2 - canvasRect.left,
+                y: scoreRect.top + scoreRect.height / 2 - canvasRect.top
+            };
+
+            for (let i = 0; i < 15; i++) {
+                const p1 = {
+                    x: p0.x + (Math.random() - 0.5) * 300, // Wider arc
+                    y: p0.y - 150 - Math.random() * 80 // Higher arc
+                };
+                flyingCoins.push({ p0, p1, p2, progress: 0, size: Math.random() * 0.5 + 0.5 });
+            }
+        }
+
+        function updateAndDrawCoins() {
+            gridCtx.save();
+            for (let i = flyingCoins.length - 1; i >= 0; i--) {
+                const coin = flyingCoins[i];
+                coin.progress += 0.015; // Slower progress for longer animation
+                if (coin.progress >= 1) { flyingCoins.splice(i, 1); continue; }
+                const t = coin.progress;
+                const currentX = Math.pow(1 - t, 2) * coin.p0.x + 2 * (1 - t) * t * coin.p1.x + Math.pow(t, 2) * coin.p2.x;
+                const currentY = Math.pow(1 - t, 2) * coin.p0.y + 2 * (1 - t) * t * coin.p1.y + Math.pow(t, 2) * coin.p2.y;
+                
+                gridCtx.globalAlpha = (1-t);
+                gridCtx.font = `${cellSize * coin.size}px Roboto`;
+                gridCtx.textAlign = 'center';
+                gridCtx.textBaseline = 'middle';
+                gridCtx.fillText("🟡", currentX, currentY);
+                gridCtx.globalAlpha = 1.0;
+            }
+            gridCtx.restore();
+        }
+        
+        function drawLevelUpAnimation() {
+            levelUpAnimation.progress += 0.008; // Slower for longer duration
+            const p = levelUpAnimation.progress;
+            
+            const scale = 1 + Math.sin(p * Math.PI) * 0.2;
+            const alpha = Math.sin(p * Math.PI);
+            
+            gridCtx.save();
+            gridCtx.textAlign = 'center';
+            gridCtx.textBaseline = 'middle';
+            
+            const centerX = (GRID_SIZE * cellSize) / 2;
+            const centerY = (GRID_SIZE * cellSize) / 2;
+            
+            gridCtx.translate(centerX, centerY);
+            gridCtx.scale(scale, scale);
+            
+            const gradient = gridCtx.createLinearGradient(-200, 0, 200, 0);
+            const shimmerPos = (Date.now() / 1000) % 1;
+            gradient.addColorStop(Math.max(0, shimmerPos - 0.2), '#ca8a04');
+            gradient.addColorStop(shimmerPos, '#facc15');
+            gradient.addColorStop(Math.min(1, shimmerPos + 0.2), '#ca8a04');
+
+            gridCtx.font = `bold italic ${cellSize * 1.5}px "Lobster Two"`;
+            gridCtx.globalAlpha = alpha;
+            
+            gridCtx.shadowColor = '#38bdf8';
+            gridCtx.shadowBlur = 20;
+
+            gridCtx.fillStyle = '#4c1d95';
+            gridCtx.fillText('Level Complete!', 0, 0);
+            
+            gridCtx.fillStyle = gradient;
+            gridCtx.fillText('Level Complete!', 0, 0);
+            
+            gridCtx.restore();
+        }
+
+        // ===================================================================================
+        //  INACTIVITY & BOMB PULSE
+        // ===================================================================================
+        function resetInactivity() {
+            lastInteractionTime = Date.now();
+            if (penaltyIntervalId) {
+                clearInterval(penaltyIntervalId);
+                penaltyIntervalId = null;
+            }
+        }
+
+        function checkInactivity() {
+            if (gameIsOver || isLevelingUp) return;
+            
+            if (Date.now() - lastInteractionTime > 20000 && !penaltyIntervalId) {
+                penaltyIntervalId = setInterval(() => {
+                    score = Math.max(0, score - 20000);
+                    DEFAULT_SPIN_SPEED *= 0.90;
+                    updateUI();
+                }, 3000);
+            }
+        }
+
+        function updateBombPulse(deltaTime) {
+            bombPulseState.timer += deltaTime;
+            if (bombPulseState.timer > 30) {
+                bombPulseState.timer = 0;
+                bombPulseState.active = true;
+                bombPulseState.index = 0;
+            }
+            if(bombPulseState.active) {
+                if (bombPulseState.timer > bombPulseState.duration) {
+                    bombPulseState.timer = 0;
+                    bombPulseState.index++;
+                    if (bombPulseState.index >= BOMB_EMOJIS.length) {
+                        bombPulseState.active = false;
+                    }
+                }
+            }
+        }
+
+        // ===================================================================================
+        //  GAME LOOP
+        // ===================================================================================
+        let lastTime = 0;
+        function gameLoop(timestamp) {
+            const deltaTime = ((timestamp - lastTime) / 1000) || 0;
+            lastTime = timestamp;
+
+            if (!gameIsOver && !isLevelingUp) {
+                timeLeft -= deltaTime;
+                if (timeLeft <= 0) { timeLeft = 0; showGameOver(); }
+                checkInactivity();
+                updateBombPulse(deltaTime);
+                updateUI();
+            }
+            
+            animate3D(deltaTime, timestamp);
+
+            gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+            drawBoardElements(timestamp);
+            updateAndDrawCoins();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- START THE GAME ---
+        init();
+    </script>
+</body>
+</html>
